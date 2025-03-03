@@ -57,19 +57,21 @@ export const calculateStats = (sightings: Sighting[]): SightingStats => {
     'five-door': sightings.filter(s => s.model === 'five-door').length,
   };
   
-  // Find most frequent color
+  // Find most frequent color with null check
   const colorCount: Record<string, number> = {};
   sightings.forEach(s => {
-    colorCount[s.color] = (colorCount[s.color] || 0) + 1;
+    if (s.color) {
+      colorCount[s.color] = (colorCount[s.color] || 0) + 1;
+    }
   });
   
-  let mostFrequentColor = null;
+  let mostFrequentColor = colorOptions[0].hex; // Default to first color
   let maxCount = 0;
   
   Object.entries(colorCount).forEach(([color, count]) => {
     if (count > maxCount) {
       maxCount = count;
-      mostFrequentColor = { color, count };
+      mostFrequentColor = color;
     }
   });
   
@@ -80,8 +82,9 @@ export const calculateStats = (sightings: Sighting[]): SightingStats => {
   };
 };
 
-// Helper function to get the color name from hex value
-export const getColorNameFromHex = (hex: string): string => {
+// Helper function to get the color name from hex value with null check
+export const getColorNameFromHex = (hex: string | null): string => {
+  if (!hex) return 'Unknown';
   const color = colorOptions.find(c => c.hex.toLowerCase() === hex.toLowerCase());
   return color ? color.name : 'Unknown';
 };

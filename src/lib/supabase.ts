@@ -4,9 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables');
-}
+console.log('Attempting to initialize Supabase client...');
 
 export const supabase = createClient(
   supabaseUrl || '',
@@ -15,10 +13,19 @@ export const supabase = createClient(
 
 // Auth helper functions
 export const signInWithGoogle = async () => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Supabase credentials not configured. Auth features will not work.');
+    return { error: new Error('Supabase not configured') };
+  }
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: `${window.location.origin}/`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent'
+      }
     },
   });
   
@@ -40,6 +47,11 @@ export const signOut = async () => {
 };
 
 export const getCurrentUser = async () => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Supabase credentials not configured. Auth features will not work.');
+    return null;
+  }
+
   const { data, error } = await supabase.auth.getUser();
   if (error) {
     console.error('Error getting user:', error);

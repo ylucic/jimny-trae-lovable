@@ -31,6 +31,56 @@ const SightingForm: React.FC<SightingFormProps> = ({ onSightingAdded }) => {
     return Object.keys(errors).length === 0;
   };
 
+  const getLocation = async () => {
+    setIsGettingLocation(true);
+    setLocationError(null);
+
+    try {
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by your browser');
+      }
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+      });
+
+      setLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      });
+    } catch (error) {
+      setLocationError(error instanceof Error ? error.message : 'Failed to get location');
+      setLocation(null);
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateForm()) {
+      const newSighting = addSighting({
+        model,
+        color,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        userId: 'user-1' // TODO: Replace with actual user ID from auth context
+      });
+      const isNewColor = isNewColorForUser(color, 'user-1');
+      onSightingAdded(newSighting, isNewColor);
+      
+      // Reset form
+      setModel('three-door');
+      setColor(colorOptions[0].hex);
+      setLocation(null);
+      setFormErrors({});
+    }
+  };
+
   return (
     <motion.form
       className="glass-panel rounded-2xl p-6 mb-8"
@@ -39,12 +89,7 @@ const SightingForm: React.FC<SightingFormProps> = ({ onSightingAdded }) => {
       transition={{ duration: 0.3 }}
       role="form"
       aria-label="Jimny sighting form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (validateForm()) {
-          // Form submission logic
-        }
-      }}
+      onSubmit={handleSubmit}
     >
       <h2 className="text-xl font-medium mb-6">Log a Sighting</h2>
       

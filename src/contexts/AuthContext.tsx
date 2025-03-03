@@ -18,62 +18,48 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // Check for cached session on initial load
-    const cachedSession = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (cachedSession) {
+    const initializeAuth = async () => {
       try {
-        const parsedSession = JSON.parse(cachedSession);
-        setUser(parsedSession);
-      } catch (error) {
-        console.error("Error parsing cached session:", error);
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-      }
-    }
+        console.log('Initializing auth context...');
+        // Check for cached session on initial load
+        const cachedSession = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (cachedSession) {
+          try {
+            const parsedSession = JSON.parse(cachedSession);
+            setUser(parsedSession);
+            console.log('Loaded cached session:', parsedSession);
+          } catch (error) {
+            console.error('Error parsing cached session:', error);
+            localStorage.removeItem(SESSION_STORAGE_KEY);
+          }
+        }
 
-    // Check for the user on initial load
-    const loadUser = async () => {
-      try {
+        // Check for the user on initial load
         const currentUser = await getCurrentUser();
+        console.log('Current user from Supabase:', currentUser);
         if (currentUser) {
           setUser(currentUser);
           localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentUser));
         }
       } catch (error) {
-        console.error("Error loading user:", error);
-        toast.error('Failed to load user session');
+        console.error('Error in auth initialization:', error);
+        setError(error instanceof Error ? error : new Error('Failed to initialize auth'));
+        toast.error('Failed to initialize authentication');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadUser();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const currentUser = session?.user || null;
-        setUser(currentUser);
-        setIsLoading(false);
-        
-        if (event === 'SIGNED_IN') {
-          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentUser));
-          toast.success('Successfully signed in!');
-        } else if (event === 'SIGNED_OUT') {
-          localStorage.removeItem(SESSION_STORAGE_KEY);
-          toast.info('Signed out');
-        } else if (event === 'USER_UPDATED') {
-          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentUser));
-          toast.success('User profile updated');
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    initializeAuth();
   }, []);
+
+  if (error) {
+    console.error('Auth context error:', error);
+    return <div className="p-4 text-red-500">Error: {error.message}</div>;
+  }
 
   const handleSignInWithGoogle = async () => {
     try {
